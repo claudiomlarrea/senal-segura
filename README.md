@@ -17,8 +17,13 @@ No monitorea WhatsApp u otras apps en segundo plano: el usuario elige qué conte
 Repositorio GitHub Pages independiente + dominio `.com.ar`.
 
 1. Repo público `senal-segura` en GitHub.
-2. Push a `main` → Actions despliega el build a Pages.
-3. Settings → Pages → Custom domain: `senal-segura.com.ar` (HTTPS).
+2. El sitio publicado sale de la rama `gh-pages` (`npm run deploy`).
+3. Settings → Pages → Branch `gh-pages` / root.
+4. Settings → Pages → Custom domain: `senal-segura.com.ar` (HTTPS).
+
+```bash
+npm run deploy
+```
 
 ## DNS en NIC.ar (después del registro)
 
