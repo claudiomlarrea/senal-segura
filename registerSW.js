@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/senal-segura/sw.js', { scope: '/senal-segura/' })})}
