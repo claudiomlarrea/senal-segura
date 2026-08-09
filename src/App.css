@@ -185,6 +185,15 @@ textarea {
   background: var(--ink);
 }
 
+.btn-sky {
+  background: #3a9fc4;
+  color: #ffffff;
+}
+
+.btn-sky:hover {
+  background: #2f87a8;
+}
+
 .btn-ghost {
   background: rgba(255, 255, 255, 0.45);
   border-color: var(--line);

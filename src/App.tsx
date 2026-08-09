@@ -253,7 +253,7 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-text btn-small"
+                  className="btn btn-sky"
                   onClick={() => cameraRef.current?.click()}
                   disabled={ocrBusy}
                 >
