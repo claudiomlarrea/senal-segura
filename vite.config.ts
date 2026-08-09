@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // Hasta tener senal-segura.com.ar con DNS: sitio en /senal-segura/
+  // Cuando el dominio esté activo, cambiar a base: '/' y volver a publicar.
+  base: '/senal-segura/',
   plugins: [
     react(),
     VitePWA({
@@ -18,8 +21,8 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait-primary',
         lang: 'es-AR',
-        start_url: '/',
-        scope: '/',
+        start_url: './',
+        scope: './',
         categories: ['education', 'lifestyle', 'security'],
         icons: [
           {

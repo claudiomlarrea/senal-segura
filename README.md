@@ -2,7 +2,9 @@
 
 App web instalable (PWA) para detectar **indicios** de grooming en chats y capturas, con educación y guía de ayuda.
 
-**Dominio:** https://senal-segura.com.ar/
+**Sitio online (mientras se registra el dominio):** https://claudiomlarrea.github.io/senal-segura/
+
+**Dominio objetivo:** https://senal-segura.com.ar/
 
 ## Cómo funciona
 
@@ -27,7 +29,10 @@ npm run deploy
 
 ## DNS en NIC.ar (después del registro)
 
-En el panel del dominio `senal-segura.com.ar` → **Delegación / DNS**:
+1. Registrá `senal-segura.com.ar` en [NIC.ar](https://nic.ar).
+2. En este proyecto: poné `base: '/'` en `vite.config.ts`, creá `public/CNAME` con `senal-segura.com.ar`, y corré `npm run deploy`.
+3. En GitHub → Settings → Pages → Custom domain: `senal-segura.com.ar`.
+4. En el panel del dominio → **Delegación / DNS**:
 
 ### Opción recomendada (dominio raíz)
 

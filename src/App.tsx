@@ -47,7 +47,7 @@ export default function App() {
     const next = analyzeConversation(shared)
     setResult(next)
     setAnalyzed(true)
-    window.history.replaceState({}, '', '/')
+    window.history.replaceState({}, '', import.meta.env.BASE_URL || '/')
   }, [])
 
   function runAnalysis(value = text) {
