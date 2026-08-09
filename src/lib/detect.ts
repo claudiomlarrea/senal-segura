@@ -329,26 +329,30 @@ export function analyzeConversation(raw: string): AnalysisResult {
 
 export const LEVEL_META: Record<
   RiskLevel,
-  { title: string; tone: string; hint: string }
+  { title: string; tone: string; hint: string; actionNow: string }
 > = {
   bajo: {
     title: 'Riesgo bajo',
     tone: 'Por ahora no hay indicios fuertes, pero la prevención siempre ayuda.',
     hint: 'Seguí atenta/o a cómo te hace sentir la conversación.',
+    actionNow: 'Si te incomoda, bloqueá y contale a un adulto.',
   },
   medio: {
     title: 'Riesgo medio',
     tone: 'Hay señales que no conviene ignorar.',
     hint: 'Hablalo con un adulto y cuidá tus datos.',
+    actionNow: 'No mandes fotos ni datos. Contale a un adulto hoy.',
   },
   alto: {
     title: 'Riesgo alto',
     tone: 'Los indicios son preocupantes.',
     hint: 'Cortá el contacto riesgoso y pedí acompañamiento.',
+    actionNow: 'Bloqueá, guardá capturas y pedí ayuda a un adulto.',
   },
   critico: {
     title: 'Riesgo crítico',
     tone: 'Hay indicios graves de posible grooming.',
     hint: 'Pedí ayuda ahora. No estás sola/o.',
+    actionNow: 'Pedí ayuda ahora. No confrontes sola/o.',
   },
 }

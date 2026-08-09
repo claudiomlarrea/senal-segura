@@ -92,10 +92,50 @@ export const HELP_RESOURCES: HelpResource[] = [
   },
 ]
 
-export const SAMPLE_CHAT = `Hola, vi que jugás al mismo juego que yo
+export interface SampleChat {
+  id: string
+  label: string
+  text: string
+}
+
+export const SAMPLE_CHATS: SampleChat[] = [
+  {
+    id: 'juego',
+    label: 'Juego online',
+    text: `Hola, vi que jugás al mismo juego que yo
 Qué bueno, ¿cuántos años tenés?
 Yo también tengo 11, qué coincidencia
 No le digas a tus papás que hablamos, que sea nuestro secreto
 Pasemos a WhatsApp, dame tu número
 Si me mandás una fotito te regalo una skin
-Dale, no seas aburrida, es solo una foto`
+Dale, no seas aburrida, es solo una foto`,
+  },
+  {
+    id: 'redes',
+    label: 'Red social',
+    text: `Hola, me gustaron tus fotos
+Sos muy madura para tu edad
+Pasemos a Instagram privado, dame tu user
+¿Dónde vivís? ¿A qué colegio vas?
+Si me mandás una foto te ayudo con followers
+No le digas a nadie, es entre nosotros`,
+  },
+  {
+    id: 'chantaje',
+    label: 'Chantaje',
+    text: `Si no me mandás más fotos voy a publicar las que tengo
+Te vas a arrepentir
+Después de todo lo que hice por vos
+Contestame ya o se lo mando a tus amigos
+Solo yo te entiendo, tus padres no saben nada`,
+  },
+]
+
+/** @deprecated use SAMPLE_CHATS */
+export const SAMPLE_CHAT = SAMPLE_CHATS[0].text
+
+export const OCR_TIPS = [
+  'Captura nítida, con buen contraste.',
+  'Que se lean bien los mensajes (sin dedos tapando).',
+  'Si falla la lectura, pegá el texto a mano.',
+]

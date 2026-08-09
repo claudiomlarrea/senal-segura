@@ -6,7 +6,13 @@ import {
   type AnalysisResult,
   type RiskLevel,
 } from './lib/detect'
-import { HELP_RESOURCES, LESSONS, SAMPLE_CHAT, type Audience } from './lib/content'
+import {
+  HELP_RESOURCES,
+  LESSONS,
+  OCR_TIPS,
+  SAMPLE_CHATS,
+  type Audience,
+} from './lib/content'
 import { extractTextFromImage } from './lib/ocr'
 import { useInstallPrompt } from './hooks/useInstallPrompt'
 import './App.css'
@@ -37,7 +43,9 @@ export default function App() {
   const [ocrError, setOcrError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [installDismissed, setInstallDismissed] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
   const { canInstall, showIosHint, installed, install } = useInstallPrompt()
 
   useEffect(() => {
@@ -50,17 +58,25 @@ export default function App() {
     window.history.replaceState({}, '', import.meta.env.BASE_URL || '/')
   }, [])
 
-  function runAnalysis(value = text) {
-    const next = analyzeConversation(value)
+  function showResult(next: AnalysisResult) {
     setResult(next)
     setAnalyzed(true)
+    requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
-  function loadSample() {
-    setText(SAMPLE_CHAT)
+  function runAnalysis(value = text) {
+    showResult(analyzeConversation(value))
+  }
+
+  function loadSample(id: string) {
+    const sample = SAMPLE_CHATS.find((item) => item.id === id) ?? SAMPLE_CHATS[0]
+    setText(sample.text)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(null)
     setOcrError(null)
-    runAnalysis(SAMPLE_CHAT)
+    showResult(analyzeConversation(sample.text))
   }
 
   function clearAll() {
@@ -71,7 +87,8 @@ export default function App() {
     setOcrProgress(0)
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(null)
-    if (fileRef.current) fileRef.current.value = ''
+    if (galleryRef.current) galleryRef.current.value = ''
+    if (cameraRef.current) cameraRef.current.value = ''
   }
 
   async function onImageSelected(file: File | undefined) {
@@ -85,11 +102,13 @@ export default function App() {
     try {
       const extracted = await extractTextFromImage(file, setOcrProgress)
       if (!extracted) {
-        setOcrError('No pudimos leer texto en la imagen. Probá con otra captura más nítida o pegá el chat.')
+        setOcrError(
+          'No pudimos leer texto en la imagen. Probá otra captura más nítida o pegá el chat.',
+        )
         return
       }
       setText(extracted)
-      runAnalysis(extracted)
+      showResult(analyzeConversation(extracted))
     } catch {
       setOcrError('Falló la lectura de la captura. Revisá la imagen o pegá el texto manualmente.')
     } finally {
@@ -99,6 +118,7 @@ export default function App() {
 
   const lessons = LESSONS.filter((l) => l.audience === audience)
   const showInstallBanner = !installDismissed && (canInstall || showIosHint) && !installed
+  const urgent = analyzed && result && (result.level === 'alto' || result.level === 'critico')
 
   return (
     <div className="page">
@@ -113,7 +133,7 @@ export default function App() {
           <a href="#analizar">Analizar</a>
           <a href="#instalar">Instalar</a>
           <a href="#aprender">Aprender</a>
-          <a href="#ayuda">Pedir ayuda</a>
+          <a href="#ayuda">Ayuda</a>
         </nav>
       </header>
 
@@ -129,7 +149,7 @@ export default function App() {
               <strong>Instalá Señal Segura en tu teléfono</strong>
               <p>
                 {showIosHint
-                  ? 'En iPhone: compartí → “Añadir a pantalla de inicio”.'
+                  ? 'En iPhone (Safari): Compartir → “Añadir a pantalla de inicio”.'
                   : 'Queda como app, con acceso rápido para analizar chats y capturas.'}
               </p>
             </div>
@@ -162,15 +182,14 @@ export default function App() {
             <p className="brand-lockup">Señal Segura</p>
             <h1>Tu alerta de grooming, en el celular</h1>
             <p className="lede">
-              Instalá la app, compartí un mensaje o subí una captura. El análisis corre en tu
-              dispositivo y te marca indicios sospechosos.
+              Subí una captura o pegá un chat. En segundos ves si hay indicios y qué hacer.
             </p>
             <div className="cta-row">
               <a className="btn btn-primary" href="#analizar">
                 Analizar ahora
               </a>
               <a className="btn btn-ghost" href="#instalar">
-                Cómo instalarla
+                Instalar app
               </a>
             </div>
           </motion.div>
@@ -194,16 +213,24 @@ export default function App() {
           <div className="section-head">
             <h2>Analizá chats y capturas</h2>
             <p>
-              Pegá texto, subí una captura o usá “Compartir” hacia Señal Segura. No lee WhatsApp
-              u otras apps por debajo: vos elegís qué revisar. Todo se procesa en el teléfono.
+              Vos elegís qué revisar. No lee WhatsApp ni otras apps por debajo. Todo se procesa en
+              tu teléfono.
             </p>
           </div>
 
           <div className="analyze-grid">
             <div className="compose">
+              <p className="compose-label">1. Traé el chat</p>
               <div className="input-modes">
                 <input
-                  ref={fileRef}
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => void onImageSelected(e.target.files?.[0])}
+                />
+                <input
+                  ref={cameraRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
@@ -212,13 +239,25 @@ export default function App() {
                 />
                 <button
                   type="button"
-                  className="btn btn-ghost btn-small"
-                  onClick={() => fileRef.current?.click()}
+                  className="btn btn-primary btn-small"
+                  onClick={() => galleryRef.current?.click()}
                   disabled={ocrBusy}
                 >
-                  Subir o sacar captura
+                  Galería
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-small"
+                  onClick={() => cameraRef.current?.click()}
+                  disabled={ocrBusy}
+                >
+                  Cámara
                 </button>
               </div>
+
+              <p className="ocr-tips">
+                Tips: {OCR_TIPS.join(' · ')}
+              </p>
 
               {previewUrl && (
                 <div className="capture-preview">
@@ -227,31 +266,47 @@ export default function App() {
               )}
 
               {ocrBusy && (
-                <p className="ocr-status" role="status">
-                  Leyendo texto de la captura… {Math.round(ocrProgress * 100)}%
-                </p>
+                <div className="ocr-status" role="status">
+                  <p>Leyendo texto de la captura… {Math.round(ocrProgress * 100)}%</p>
+                  <div className="ocr-bar" aria-hidden="true">
+                    <span style={{ width: `${Math.max(8, Math.round(ocrProgress * 100))}%` }} />
+                  </div>
+                </div>
               )}
               {ocrError && <p className="ocr-error">{ocrError}</p>}
 
-              <label htmlFor="chat">Texto del chat o mensaje sospechoso</label>
+              <label htmlFor="chat">O pegá el texto acá</label>
               <textarea
                 id="chat"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Pegá el chat, o subí una captura para leerlo automáticamente…"
-                rows={12}
+                placeholder="Pegá mensajes sospechosos…"
+                rows={10}
               />
+
+              <p className="compose-label">Probar con un ejemplo</p>
+              <div className="sample-chips">
+                {SAMPLE_CHATS.map((sample) => (
+                  <button
+                    key={sample.id}
+                    type="button"
+                    className="chip"
+                    onClick={() => loadSample(sample.id)}
+                    disabled={ocrBusy}
+                  >
+                    {sample.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="compose-actions">
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={() => runAnalysis()}
-                  disabled={ocrBusy}
+                  disabled={ocrBusy || !text.trim()}
                 >
                   Buscar indicios
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={loadSample}>
-                  Probar ejemplo
                 </button>
                 <button type="button" className="btn btn-text" onClick={clearAll}>
                   Limpiar
@@ -259,7 +314,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="result-panel" aria-live="polite">
+            <div className="result-panel" aria-live="polite" ref={resultRef} id="resultado">
               <AnimatePresence mode="wait">
                 {!analyzed || !result ? (
                   <motion.div
@@ -269,9 +324,8 @@ export default function App() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <p>
-                      Acá vas a ver el nivel de riesgo, las señales detectadas y pasos sugeridos.
-                    </p>
+                    <p className="result-empty-title">Acá aparece el resultado</p>
+                    <p>Nivel de riesgo, señales detectadas y qué hacer en el momento.</p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -283,9 +337,20 @@ export default function App() {
                   >
                     <div className={levelClass(result.level)}>
                       <p className="level-kicker">{LEVEL_META[result.level].title}</p>
+                      <p className="level-action">{LEVEL_META[result.level].actionNow}</p>
                       <p className="level-tone">{LEVEL_META[result.level].tone}</p>
-                      <p className="level-hint">{LEVEL_META[result.level].hint}</p>
                     </div>
+
+                    {urgent && (
+                      <div className="urgent-actions">
+                        <a className="btn btn-primary" href="#ayuda">
+                          Pedir ayuda ahora
+                        </a>
+                        <a className="btn btn-ghost" href="tel:137">
+                          Llamar 137
+                        </a>
+                      </div>
+                    )}
 
                     <p className="summary">{result.summary}</p>
 
@@ -321,9 +386,14 @@ export default function App() {
                           <li key={step}>{step}</li>
                         ))}
                       </ol>
-                      <a className="btn btn-primary btn-small" href="#ayuda">
-                        Ver cómo pedir ayuda
-                      </a>
+                      <div className="next-actions">
+                        <a className="btn btn-primary btn-small" href="#ayuda">
+                          Cómo pedir ayuda
+                        </a>
+                        <a className="btn btn-ghost btn-small" href="#aprender">
+                          Ver señales
+                        </a>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -335,25 +405,32 @@ export default function App() {
         <section className="section install" id="instalar">
           <div className="section-head">
             <h2>Instalála en el teléfono</h2>
-            <p>
-              Señal Segura es una app web instalable (PWA): queda en tu pantalla de inicio y puede
-              funcionar sin abrir el navegador como una página común.
-            </p>
+            <p>Queda en la pantalla de inicio, como una app.</p>
           </div>
 
-          <ol className="install-steps">
-            <li>
-              <strong>Android (Chrome):</strong> menú ⋮ → “Instalar app” o “Agregar a la pantalla
-              de inicio”.
-            </li>
-            <li>
-              <strong>iPhone (Safari):</strong> botón Compartir → “Añadir a pantalla de inicio”.
-            </li>
-            <li>
-              <strong>Usarla con chats:</strong> copiá mensajes, subí una captura, o en Android
-              usá “Compartir” hacia Señal Segura cuando esté instalada.
-            </li>
-          </ol>
+          <div className="install-grid">
+            <article className="install-card">
+              <h3>Android</h3>
+              <ol>
+                <li>Abrí esta web en Chrome.</li>
+                <li>Menú ⋮ → “Instalar app”.</li>
+                <li>Confirmá. Listo.</li>
+              </ol>
+            </article>
+            <article className="install-card">
+              <h3>iPhone</h3>
+              <ol>
+                <li>Abrí esta web en Safari.</li>
+                <li>Compartir → “Añadir a pantalla de inicio”.</li>
+                <li>Confirmá. Listo.</li>
+              </ol>
+            </article>
+          </div>
+
+          <p className="install-note">
+            Después: sacá captura del chat sospechoso o usá “Compartir” hacia Señal Segura
+            (Android).
+          </p>
 
           {canInstall && (
             <button type="button" className="btn btn-primary" onClick={() => void install()}>
@@ -429,6 +506,13 @@ export default function App() {
           </ul>
         </section>
       </main>
+
+      <nav className="mobile-nav" aria-label="Accesos rápidos">
+        <a href="#analizar">Analizar</a>
+        <a href="#resultado">Resultado</a>
+        <a href="#ayuda">Ayuda</a>
+        <a href="#instalar">Instalar</a>
+      </nav>
 
       <footer className="footer">
         <p>
