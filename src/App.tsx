@@ -221,12 +221,17 @@ export default function App() {
 
           <div className="analyze-grid">
             <div className="compose">
-              <p className="compose-label">1. Traé el chat</p>
+              <p className="compose-label">1. Traé el chat (desde la galería)</p>
+              <p className="ocr-steps">
+                Primero hacé la <strong>captura de pantalla</strong> en WhatsApp o el juego.
+                Después tocá el botón verde y elegí esa imagen en <strong>Google Fotos / Galería</strong>.
+                No uses la cámara apuntando a otra pantalla.
+              </p>
               <div className="input-modes">
                 <input
                   ref={galleryRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif,.png,.jpg,.jpeg,.webp"
                   hidden
                   onChange={(e) => void onImageSelected(e.target.files?.[0])}
                 />
@@ -240,25 +245,24 @@ export default function App() {
                 />
                 <button
                   type="button"
-                  className="btn btn-primary btn-small"
+                  className="btn btn-primary"
                   onClick={() => galleryRef.current?.click()}
                   disabled={ocrBusy}
                 >
-                  Galería
+                  Elegir de la galería
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-small"
+                  className="btn btn-text btn-small"
                   onClick={() => cameraRef.current?.click()}
                   disabled={ocrBusy}
                 >
-                  Cámara
+                  Usar cámara
                 </button>
               </div>
 
-              <p className="ocr-tips">
-                Tips: {OCR_TIPS.join(' · ')}
-              </p>
+              <p className="ocr-tips">Tips: {OCR_TIPS.join(' · ')}</p>
+              <p className="app-build">Versión con galería · si no ves este texto, recargá la página</p>
 
               {previewUrl && (
                 <div className="capture-preview">
