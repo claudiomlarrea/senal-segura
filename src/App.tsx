@@ -13,7 +13,7 @@ import {
   SAMPLE_CHATS,
   type Audience,
 } from './lib/content'
-import { extractTextFromImage } from './lib/ocr'
+import { extractTextFromImage, OcrQualityError } from './lib/ocr'
 import { useInstallPrompt } from './hooks/useInstallPrompt'
 import './App.css'
 
@@ -101,16 +101,17 @@ export default function App() {
 
     try {
       const extracted = await extractTextFromImage(file, setOcrProgress)
-      if (!extracted) {
-        setOcrError(
-          'No pudimos leer texto en la imagen. Probá otra captura más nítida o pegá el chat.',
-        )
-        return
-      }
       setText(extracted)
       showResult(analyzeConversation(extracted))
-    } catch {
-      setOcrError('Falló la lectura de la captura. Revisá la imagen o pegá el texto manualmente.')
+    } catch (error) {
+      const message =
+        error instanceof OcrQualityError
+          ? error.message
+          : 'Falló la lectura de la captura. Usá Galería con una captura del chat, o pegá el texto.'
+      setOcrError(message)
+      setText('')
+      setResult(null)
+      setAnalyzed(false)
     } finally {
       setOcrBusy(false)
     }
