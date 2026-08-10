@@ -10,6 +10,7 @@ import {
   HELP_RESOURCES,
   LESSONS,
   OCR_TIPS,
+  RESULT_DISCLAIMER,
   SAMPLE_CHATS,
   type Audience,
 } from './lib/content'
@@ -181,9 +182,10 @@ export default function App() {
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
             <p className="brand-lockup">Señal Segura</p>
-            <h1>Tu alerta de grooming, en el celular</h1>
+            <h1>Una herramienta de prevención frente al grooming</h1>
             <p className="lede">
-              Subí una captura o pegá un chat. En segundos ves si hay indicios y qué hacer.
+              Analizá una conversación o captura para identificar señales de alerta y saber cómo
+              actuar.
             </p>
             <div className="cta-row">
               <a className="btn btn-primary" href="#analizar">
@@ -351,11 +353,16 @@ export default function App() {
                         <a className="btn btn-primary" href="#ayuda">
                           Pedir ayuda ahora
                         </a>
-                        <a className="btn btn-ghost" href="tel:137">
+                        <a className="btn btn-sky" href="tel:137">
                           Llamar 137
+                        </a>
+                        <a className="btn btn-ghost" href="tel:911">
+                          911
                         </a>
                       </div>
                     )}
+
+                    <p className="result-disclaimer">{RESULT_DISCLAIMER}</p>
 
                     <p className="summary">{result.summary}</p>
 
@@ -491,19 +498,20 @@ export default function App() {
           <div className="section-head">
             <h2>Pedir ayuda</h2>
             <p>
-              Si hay indicios, no lo guardes. En San Juan y en Argentina hay canales para denunciar
-              y orientarte.
+              Esta app orienta; no reemplaza a un adulto, un profesional ni una denuncia. Elegí el
+              canal según la urgencia.
             </p>
           </div>
 
           <ul className="help-list">
             {HELP_RESOURCES.map((resource) => (
               <li key={resource.name}>
+                <p className={`help-kind help-kind--${resource.kind}`}>{resource.kindLabel}</p>
                 <h3>{resource.name}</h3>
                 <p>{resource.detail}</p>
                 {resource.action && (
                   <a className="btn btn-ghost btn-small" href={resource.action}>
-                    Llamar
+                    {resource.actionLabel ?? 'Contactar'}
                   </a>
                 )}
               </li>
@@ -521,12 +529,12 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          <strong>Señal Segura</strong> es una herramienta de orientación preventiva. No diagnostica
-          delitos ni sustituye el acompañamiento profesional o judicial.
+          <strong>Señal Segura</strong> — herramienta digital de prevención y educación frente al
+          grooming. Desarrollada por Claudio Larrea.
         </p>
         <p className="footer-note">
-          El análisis y la lectura de capturas corren en tu dispositivo. No monitorea otras apps en
-          segundo plano.
+          Identifica señales de alerta; no diagnostica delitos ni sustituye acompañamiento
+          profesional o judicial. El análisis corre en tu dispositivo y no monitorea otras apps.
         </p>
       </footer>
     </div>

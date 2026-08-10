@@ -1,5 +1,7 @@
 export type Audience = 'chicos' | 'adolescentes' | 'adultos'
 
+export type HelpKind = 'cercania' | 'emergencia' | 'orientacion' | 'derechos' | 'denuncia'
+
 export interface Lesson {
   id: string
   audience: Audience
@@ -65,32 +67,67 @@ export const LESSONS: Lesson[] = [
 ]
 
 export interface HelpResource {
+  kind: HelpKind
+  kindLabel: string
   name: string
   detail: string
   action?: string
+  actionLabel?: string
 }
 
 export const HELP_RESOURCES: HelpResource[] = [
   {
+    kind: 'cercania',
+    kindLabel: 'Primer paso',
     name: 'Adulto de confianza',
-    detail: 'Familia, docente, preceptor/a o referente. Es el primer paso más importante.',
+    detail: 'Familia, docente, preceptor/a o referente. Contárselo a alguien que te cuide es el primer paso más importante.',
   },
   {
+    kind: 'emergencia',
+    kindLabel: 'Emergencia',
+    name: '911',
+    detail: 'Ante peligro inmediato, encuentro presencial acordado o riesgo urgente, pedí ayuda a la policía.',
+    action: 'tel:911',
+    actionLabel: 'Llamar 911',
+  },
+  {
+    kind: 'orientacion',
+    kindLabel: 'Orientación',
+    name: 'Línea 137',
+    detail:
+      'Línea nacional gratuita 24 hs. Contención y acompañamiento ante violencia familiar/sexual y grooming. También WhatsApp.',
+    action: 'tel:137',
+    actionLabel: 'Llamar 137',
+  },
+  {
+    kind: 'orientacion',
+    kindLabel: 'Orientación',
+    name: 'WhatsApp 11-3133-1000',
+    detail:
+      'Canal oficial de la Línea 137 para orientación ante grooming y violencias. Conservá capturas; no borres evidencia.',
+    action: 'https://wa.me/5491131331000',
+    actionLabel: 'Abrir WhatsApp',
+  },
+  {
+    kind: 'derechos',
+    kindLabel: 'Niñez',
+    name: 'Línea 102',
+    detail:
+      'Atención especializada sobre derechos de niños, niñas y adolescentes. Escucha y asesoramiento (no reemplaza al 911 en emergencias).',
+    action: 'tel:102',
+    actionLabel: 'Llamar 102',
+  },
+  {
+    kind: 'denuncia',
+    kindLabel: 'Denuncia',
     name: 'Fiscalía / delitos informáticos',
     detail:
-      'En San Juan, la UFI de Delitos Informáticos recibe denuncias de grooming. Conservá capturas y datos del perfil.',
-  },
-  {
-    name: 'Línea 137 (Argentina)',
-    detail: 'Atención ante violencia sexual y situaciones de abuso. Orientación y derivación.',
-    action: 'tel:137',
-  },
-  {
-    name: '911 / policía',
-    detail: 'Si hay peligro inmediato o encuentros presenciales acordados, pedí ayuda urgente.',
-    action: 'tel:911',
+      'Para denunciar, acudí a la fiscalía o dependencia policial de tu jurisdicción. En San Juan, consultá la UFI de Delitos Informáticos u organismo vigente. Conservá capturas y datos del perfil.',
   },
 ]
+
+export const RESULT_DISCLAIMER =
+  'Importante: este resultado identifica señales de alerta, pero no determina por sí solo que exista grooming ni identifica a una persona como agresora. Ante una situación preocupante, buscá ayuda de un adulto de confianza y/o de los organismos correspondientes.'
 
 export interface SampleChat {
   id: string
