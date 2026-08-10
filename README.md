@@ -2,58 +2,27 @@
 
 App web instalable (PWA) para detectar **indicios** de grooming en chats y capturas, con educación y guía de ayuda.
 
-**Sitio online (mientras se registra el dominio):** https://claudiomlarrea.github.io/senal-segura/
+**Sitio online:** https://señal-segura.com.ar/  
+**Mientras propaga DNS:** https://claudiomlarrea.github.io/senal-segura/
 
-**Dominio objetivo:** https://senal-segura.com.ar/
-
-## Cómo funciona
-
-1. Instalála en el teléfono (pantalla de inicio).
-2. Pegá un chat, subí/sacá una captura (OCR en el dispositivo) o compartí texto hacia la app (Android).
-3. Ves un nivel de riesgo, señales detectadas y pasos sugeridos.
-
-No monitorea WhatsApp u otras apps en segundo plano: el usuario elige qué contenido revisar.
-
-## Publicación (igual que Plan AURA)
-
-Repositorio GitHub Pages independiente + dominio `.com.ar`.
+## Publicación
 
 1. Repo público `senal-segura` en GitHub.
-2. El sitio publicado sale de la rama `gh-pages` (`npm run deploy`).
-3. Settings → Pages → Branch `gh-pages` / root.
-4. Settings → Pages → Custom domain: `senal-segura.com.ar` (HTTPS).
+2. `npm run deploy` → rama `gh-pages`.
+3. Settings → Pages → Custom domain: `señal-segura.com.ar` + Enforce HTTPS.
 
-```bash
-npm run deploy
-```
+## DNS en Cloudflare (señal-segura.com.ar)
 
-## DNS en NIC.ar (después del registro)
+| Tipo | Nombre | Valor | Proxy |
+|------|--------|--------|--------|
+| A | `@` | `185.199.108.153` | Proxied (naranja) o DNS only |
+| A | `@` | `185.199.109.153` | igual |
+| A | `@` | `185.199.110.153` | igual |
+| A | `@` | `185.199.111.153` | igual |
+| CNAME | `www` | `claudiomlarrea.github.io` | Proxied o DNS only |
 
-1. Registrá `senal-segura.com.ar` en [NIC.ar](https://nic.ar).
-2. En este proyecto: poné `base: '/'` en `vite.config.ts`, creá `public/CNAME` con `senal-segura.com.ar`, y corré `npm run deploy`.
-3. En GitHub → Settings → Pages → Custom domain: `senal-segura.com.ar`.
-4. En el panel del dominio → **Delegación / DNS**:
+Si el candado HTTPS falla, poné las nubes en **gris** (DNS only).
 
-### Opción recomendada (dominio raíz)
-
-Registros **A** para `@` / `senal-segura.com.ar`:
-
-| Tipo | Nombre | Valor |
-|------|--------|--------|
-| A | @ (o senal-segura.com.ar) | 185.199.108.153 |
-| A | @ | 185.199.109.153 |
-| A | @ | 185.199.110.153 |
-| A | @ | 185.199.111.153 |
-
-Y **CNAME** para `www`:
-
-| Tipo | Nombre | Valor |
-|------|--------|--------|
-| CNAME | www | claudiomlarrea.github.io |
-
-Luego en GitHub Pages marcá “Enforce HTTPS”.
-
-La propagación DNS puede demorar minutos u horas.
 
 ## Desarrollo local
 
