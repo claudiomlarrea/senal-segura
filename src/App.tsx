@@ -530,7 +530,7 @@ export default function App() {
       <footer className="footer">
         <p>
           <strong>Señal Segura</strong> — herramienta digital de prevención y educación frente al
-          grooming. Desarrollada por Claudio Larrea.
+          grooming.
         </p>
         <p className="footer-note">
           Identifica señales de alerta; no diagnostica delitos ni sustituye acompañamiento
