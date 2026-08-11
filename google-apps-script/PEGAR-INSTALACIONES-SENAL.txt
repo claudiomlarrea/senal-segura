@@ -1,0 +1,11 @@
+Contador de instalaciones — Señal Segura
+========================================
+
+En PublicacionesWeb.gs (pegar en SyncLookerOpenAlex.gs) ya están:
+
+  GET ?action=install&site=senal       → +1 instalación
+  GET ?action=installcount&site=senal  → solo lectura
+  Property: instalaciones_web_senal
+
+Después de pegar el .gs actualizado:
+  Implementar → Administrar implementaciones → lápiz → Nueva versión → Implementar

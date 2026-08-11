@@ -1,0 +1,66 @@
+Pegá en SyncLookerOpenAlex.gs / PublicacionesWeb.gs del proyecto «Publicaciones Página Web».
+
+1) En el comentario de Endpoints del encabezado, agregá:
+ * - GET  ?action=install&site=senal: +1 instalación de la PWA Señal Segura.
+ * - GET  ?action=installcount&site=senal: lectura del total de instalaciones (sin incrementar).
+
+2) En doGet, después del bloque action === "visit", agregá:
+    if (action === "install") {
+      return jsonOrJsonp_(registrarInstalacion_(param_(e, "site", "")), e);
+    }
+    if (action === "installcount") {
+      return jsonOrJsonp_(obtenerInstalaciones_(param_(e, "site", "")), e);
+    }
+
+3) Antes de registrarVisita_, agregá estas funciones:
+
+/** Sitios con contador de instalaciones PWA. */
+function isInstalacionesSite_(site) {
+  return site === "senal";
+}
+
+function instalacionesPropKey_(site) {
+  return "instalaciones_web_" + site;
+}
+
+/** +1 instalación PWA (Señal Segura, etc.). */
+function registrarInstalacion_(site) {
+  site = normalizar_(site);
+  if (!isInstalacionesSite_(site)) {
+    return { ok: false, error: "invalid_site" };
+  }
+  var props = PropertiesService.getScriptProperties();
+  var key = instalacionesPropKey_(site);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    var n = parseInt(props.getProperty(key) || "0", 10) || 0;
+    n++;
+    props.setProperty(key, String(n));
+    return {
+      ok: true,
+      tipo: "instalaciones",
+      site: site,
+      instalaciones: n
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Solo lectura del total de instalaciones. */
+function obtenerInstalaciones_(site) {
+  site = normalizar_(site);
+  if (!isInstalacionesSite_(site)) {
+    return { ok: false, error: "invalid_site" };
+  }
+  var props = PropertiesService.getScriptProperties();
+  var n = parseInt(props.getProperty(instalacionesPropKey_(site)) || "0", 10) || 0;
+  return {
+    ok: true,
+    tipo: "instalaciones",
+    site: site,
+    instalaciones: n
+  };
+}
+
