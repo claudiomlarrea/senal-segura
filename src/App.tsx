@@ -15,6 +15,7 @@ import {
   type Audience,
 } from './lib/content'
 import { extractTextFromImage, OcrQualityError } from './lib/ocr'
+import { fetchInstallCount, formatInstallCount } from './lib/installStats'
 import { useInstallPrompt } from './hooks/useInstallPrompt'
 import './App.css'
 
@@ -69,11 +70,20 @@ export default function App() {
   const [ocrStatus, setOcrStatus] = useState('')
   const [ocrError, setOcrError] = useState<string | null>(null)
   const [installDismissed, setInstallDismissed] = useState(false)
+  const [installCount, setInstallCount] = useState<number | null>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const resultRef = useRef<HTMLDivElement>(null)
   const evidenceRef = useRef<EvidenceItem[]>([])
-  const { canInstall, showIosHint, installed, install } = useInstallPrompt()
+  const { canInstall, showIosHint, installed, install } = useInstallPrompt((total) => {
+    setInstallCount(total)
+  })
+
+  useEffect(() => {
+    void fetchInstallCount().then((n) => {
+      if (n != null) setInstallCount(n)
+    })
+  }, [])
 
   useEffect(() => {
     evidenceRef.current = evidence
@@ -601,6 +611,11 @@ export default function App() {
           <div className="section-head">
             <h2>Instalála en el teléfono</h2>
             <p>Queda en la pantalla de inicio, como una app.</p>
+            {installCount != null && (
+              <p className="install-count" aria-live="polite">
+                Instalaciones: <strong>{formatInstallCount(installCount)}</strong>
+              </p>
+            )}
           </div>
 
           <div className="install-grid">

@@ -612,6 +612,17 @@ textarea {
   max-width: 52ch;
 }
 
+.install-count {
+  margin: 0.65rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.install-count strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
 .mobile-nav {
   display: none;
 }
