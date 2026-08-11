@@ -392,6 +392,62 @@ textarea {
   margin-top: 0.9rem;
 }
 
+.compose-actions--secondary {
+  margin-top: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.evidence-list {
+  margin: 0 0 1rem;
+}
+
+.evidence-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.evidence-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.evidence-item img,
+.evidence-text-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.evidence-text-thumb {
+  display: grid;
+  place-items: center;
+  background: rgba(15, 79, 72, 0.1);
+  color: var(--sea-deep);
+  font-weight: 700;
+}
+
+.evidence-meta strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.evidence-meta p {
+  margin: 0.2rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .input-modes {
   display: flex;
   flex-wrap: wrap;

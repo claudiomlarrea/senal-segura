@@ -172,7 +172,7 @@ Solo yo te entiendo, tus padres no saben nada`,
 export const SAMPLE_CHAT = SAMPLE_CHATS[0].text
 
 export const OCR_TIPS = [
+  'Podés cargar varias capturas: el grooming suele repartirse en muchos mensajes.',
   'Usá captura de pantalla del chat (Galería), no una foto a otra pantalla.',
-  'Que se lean bien los mensajes, sin reflejos ni dedos.',
-  'Si falla, pegá el texto a mano.',
+  'Si falla alguna, agregá ese tramo pegando el texto.',
 ]

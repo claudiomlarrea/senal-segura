@@ -24,6 +24,16 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
   adultos: 'Adultos',
 }
 
+const MAX_CAPTURES = 12
+
+interface EvidenceItem {
+  id: string
+  kind: 'image' | 'text'
+  label: string
+  text: string
+  previewUrl?: string
+}
+
 function levelClass(level: RiskLevel) {
   return `level level--${level}`
 }
@@ -34,29 +44,62 @@ function readSharedPayload(): string {
   return parts.join('\n').trim()
 }
 
+function combineEvidence(items: EvidenceItem[], draftText: string) {
+  const chunks = [
+    ...items.map((item, index) => `[Fragmento ${index + 1} — ${item.label}]\n${item.text}`),
+  ]
+  if (draftText.trim()) {
+    chunks.push(`[Texto adicional]\n${draftText.trim()}`)
+  }
+  return chunks.join('\n\n').trim()
+}
+
+function newId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export default function App() {
-  const [text, setText] = useState('')
+  const [draftText, setDraftText] = useState('')
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([])
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [audience, setAudience] = useState<Audience>('chicos')
   const [analyzed, setAnalyzed] = useState(false)
   const [ocrBusy, setOcrBusy] = useState(false)
   const [ocrProgress, setOcrProgress] = useState(0)
+  const [ocrStatus, setOcrStatus] = useState('')
   const [ocrError, setOcrError] = useState<string | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [installDismissed, setInstallDismissed] = useState(false)
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const resultRef = useRef<HTMLDivElement>(null)
+  const evidenceRef = useRef<EvidenceItem[]>([])
   const { canInstall, showIosHint, installed, install } = useInstallPrompt()
+
+  useEffect(() => {
+    evidenceRef.current = evidence
+  }, [evidence])
 
   useEffect(() => {
     const shared = readSharedPayload()
     if (!shared) return
-    setText(shared)
-    const next = analyzeConversation(shared)
-    setResult(next)
-    setAnalyzed(true)
+    setEvidence([
+      {
+        id: newId(),
+        kind: 'text',
+        label: 'Texto compartido',
+        text: shared,
+      },
+    ])
+    setDraftText('')
     window.history.replaceState({}, '', import.meta.env.BASE_URL || '/')
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      evidenceRef.current.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      })
+    }
   }, [])
 
   function showResult(next: AnalysisResult) {
@@ -67,60 +110,156 @@ export default function App() {
     })
   }
 
-  function runAnalysis(value = text) {
-    showResult(analyzeConversation(value))
+  function runAnalysis() {
+    const combined = combineEvidence(evidence, draftText)
+    if (!combined) return
+    showResult(analyzeConversation(combined))
   }
 
   function loadSample(id: string) {
     const sample = SAMPLE_CHATS.find((item) => item.id === id) ?? SAMPLE_CHATS[0]
-    setText(sample.text)
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl(null)
+    evidence.forEach((item) => {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+    })
+    setEvidence([
+      {
+        id: newId(),
+        kind: 'text',
+        label: `Ejemplo · ${sample.label}`,
+        text: sample.text,
+      },
+    ])
+    setDraftText('')
     setOcrError(null)
-    showResult(analyzeConversation(sample.text))
+    setAnalyzed(false)
+    setResult(null)
   }
 
   function clearAll() {
-    setText('')
+    evidence.forEach((item) => {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+    })
+    setEvidence([])
+    setDraftText('')
     setResult(null)
     setAnalyzed(false)
     setOcrError(null)
     setOcrProgress(0)
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl(null)
+    setOcrStatus('')
     if (galleryRef.current) galleryRef.current.value = ''
     if (cameraRef.current) cameraRef.current.value = ''
   }
 
-  async function onImageSelected(file: File | undefined) {
-    if (!file) return
+  function removeEvidence(id: string) {
+    setEvidence((prev) => {
+      const target = prev.find((item) => item.id === id)
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
+      return prev.filter((item) => item.id !== id)
+    })
+    setAnalyzed(false)
+    setResult(null)
+  }
+
+  function addTextFragment() {
+    const value = draftText.trim()
+    if (!value) return
+    setEvidence((prev) => [
+      ...prev,
+      {
+        id: newId(),
+        kind: 'text',
+        label: `Texto ${prev.filter((item) => item.kind === 'text').length + 1}`,
+        text: value,
+      },
+    ])
+    setDraftText('')
+    setAnalyzed(false)
+    setResult(null)
+    setOcrError(null)
+  }
+
+  async function onImagesSelected(fileList: FileList | null) {
+    if (!fileList?.length) return
+    const files = [...fileList].filter((file) => file.type.startsWith('image/'))
+    if (!files.length) return
+
+    const remaining = MAX_CAPTURES - evidence.filter((item) => item.kind === 'image').length
+    if (remaining <= 0) {
+      setOcrError(`Podés cargar hasta ${MAX_CAPTURES} capturas. Eliminá alguna para agregar más.`)
+      return
+    }
+
+    const selected = files.slice(0, remaining)
     setOcrError(null)
     setOcrBusy(true)
     setOcrProgress(0)
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl(URL.createObjectURL(file))
+    setAnalyzed(false)
+    setResult(null)
+
+    const added: EvidenceItem[] = []
+    const failures: string[] = []
 
     try {
-      const extracted = await extractTextFromImage(file, setOcrProgress)
-      setText(extracted)
-      showResult(analyzeConversation(extracted))
-    } catch (error) {
-      const message =
-        error instanceof OcrQualityError
-          ? error.message
-          : 'Falló la lectura de la captura. Usá Galería con una captura del chat, o pegá el texto.'
-      setOcrError(message)
-      setText('')
-      setResult(null)
-      setAnalyzed(false)
+      for (let i = 0; i < selected.length; i++) {
+        const file = selected[i]
+        setOcrStatus(`Leyendo captura ${i + 1} de ${selected.length}…`)
+        setOcrProgress(i / selected.length)
+        const previewUrl = URL.createObjectURL(file)
+        try {
+          const extracted = await extractTextFromImage(file, (p) => {
+            setOcrProgress((i + p) / selected.length)
+          })
+          added.push({
+            id: newId(),
+            kind: 'image',
+            label: `Captura ${evidence.filter((item) => item.kind === 'image').length + added.length + 1}`,
+            text: extracted,
+            previewUrl,
+          })
+        } catch (error) {
+          URL.revokeObjectURL(previewUrl)
+          failures.push(
+            error instanceof OcrQualityError
+              ? error.message
+              : `No se pudo leer “${file.name || 'la imagen'}”.`,
+          )
+        }
+      }
+
+      if (added.length) {
+        setEvidence((prev) => {
+          const imageCount = prev.filter((item) => item.kind === 'image').length
+          return [
+            ...prev,
+            ...added.map((item, index) => ({
+              ...item,
+              label: `Captura ${imageCount + index + 1}`,
+            })),
+          ]
+        })
+      }
+
+      if (failures.length) {
+        setOcrError(
+          added.length
+            ? `Se agregaron ${added.length} captura(s). Algunas no se leyeron bien: pegá ese tramo como texto.`
+            : failures[0],
+        )
+      }
     } finally {
       setOcrBusy(false)
+      setOcrProgress(0)
+      setOcrStatus('')
+      if (galleryRef.current) galleryRef.current.value = ''
+      if (cameraRef.current) cameraRef.current.value = ''
     }
   }
 
   const lessons = LESSONS.filter((l) => l.audience === audience)
   const showInstallBanner = !installDismissed && (canInstall || showIosHint) && !installed
   const urgent = analyzed && result && (result.level === 'alto' || result.level === 'critico')
+  const canAnalyze = evidence.length > 0 || Boolean(draftText.trim())
+  const fragmentCount = evidence.length + (draftText.trim() ? 1 : 0)
 
   return (
     <div className="page">
@@ -184,8 +323,8 @@ export default function App() {
             <p className="brand-lockup">Señal Segura</p>
             <h1>Una herramienta de prevención frente al grooming</h1>
             <p className="lede">
-              Analizá una conversación o captura para identificar señales de alerta y saber cómo
-              actuar.
+              Cargá varias capturas o mensajes de un chat para identificar señales de alerta y saber
+              cómo actuar.
             </p>
             <div className="cta-row">
               <a className="btn btn-primary" href="#analizar">
@@ -216,26 +355,27 @@ export default function App() {
           <div className="section-head">
             <h2>Analizá chats y capturas</h2>
             <p>
-              Vos elegís qué revisar. No lee WhatsApp ni otras apps por debajo. Todo se procesa en
-              tu teléfono.
+              Podés sumar varias capturas y textos antes de analizar: muchas veces los mensajes
+              riesgosos llegan repartidos. Todo se procesa en tu dispositivo.
             </p>
           </div>
 
           <div className="analyze-grid">
             <div className="compose">
-              <p className="compose-label">1. Traé el chat (desde la galería)</p>
+              <p className="compose-label">1. Sumá capturas del chat</p>
               <p className="ocr-steps">
-                Primero hacé la <strong>captura de pantalla</strong> en WhatsApp o el juego.
-                Después tocá el botón verde y elegí esa imagen en <strong>Google Fotos / Galería</strong>.
-                No uses la cámara apuntando a otra pantalla.
+                En WhatsApp o el juego, hacé varias <strong>capturas de pantalla</strong>. Después
+                tocá el botón verde y elegí <strong>una o más</strong> en Google Fotos / Galería.
+                Cuando estén todas, tocá <strong>Buscar indicios</strong>.
               </p>
               <div className="input-modes">
                 <input
                   ref={galleryRef}
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif,.png,.jpg,.jpeg,.webp"
+                  multiple
                   hidden
-                  onChange={(e) => void onImageSelected(e.target.files?.[0])}
+                  onChange={(e) => void onImagesSelected(e.target.files)}
                 />
                 <input
                   ref={cameraRef}
@@ -243,7 +383,7 @@ export default function App() {
                   accept="image/*"
                   capture="environment"
                   hidden
-                  onChange={(e) => void onImageSelected(e.target.files?.[0])}
+                  onChange={(e) => void onImagesSelected(e.target.files)}
                 />
                 <button
                   type="button"
@@ -264,17 +404,12 @@ export default function App() {
               </div>
 
               <p className="ocr-tips">Tips: {OCR_TIPS.join(' · ')}</p>
-              <p className="app-build">Versión con galería · si no ves este texto, recargá la página</p>
-
-              {previewUrl && (
-                <div className="capture-preview">
-                  <img src={previewUrl} alt="Captura seleccionada para analizar" />
-                </div>
-              )}
 
               {ocrBusy && (
                 <div className="ocr-status" role="status">
-                  <p>Leyendo texto de la captura… {Math.round(ocrProgress * 100)}%</p>
+                  <p>
+                    {ocrStatus || 'Leyendo capturas…'} {Math.round(ocrProgress * 100)}%
+                  </p>
                   <div className="ocr-bar" aria-hidden="true">
                     <span style={{ width: `${Math.max(8, Math.round(ocrProgress * 100))}%` }} />
                   </div>
@@ -282,14 +417,58 @@ export default function App() {
               )}
               {ocrError && <p className="ocr-error">{ocrError}</p>}
 
-              <label htmlFor="chat">O pegá el texto acá</label>
+              {evidence.length > 0 && (
+                <div className="evidence-list">
+                  <p className="compose-label">
+                    Fragmentos cargados ({evidence.length}
+                    {draftText.trim() ? ' + texto en edición' : ''})
+                  </p>
+                  <ul>
+                    {evidence.map((item) => (
+                      <li key={item.id} className="evidence-item">
+                        {item.previewUrl ? (
+                          <img src={item.previewUrl} alt="" />
+                        ) : (
+                          <div className="evidence-text-thumb" aria-hidden="true">
+                            Aa
+                          </div>
+                        )}
+                        <div className="evidence-meta">
+                          <strong>{item.label}</strong>
+                          <p>{item.text.slice(0, 110)}{item.text.length > 110 ? '…' : ''}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-text btn-small"
+                          onClick={() => removeEvidence(item.id)}
+                          disabled={ocrBusy}
+                        >
+                          Quitar
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <label htmlFor="chat">2. Agregá más texto si hace falta</label>
               <textarea
                 id="chat"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Pegá mensajes sospechosos…"
-                rows={10}
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                placeholder="Pegá otro tramo del chat y tocá “Agregar texto”, o dejalo acá y se incluye al analizar…"
+                rows={8}
               />
+              <div className="compose-actions compose-actions--secondary">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-small"
+                  onClick={addTextFragment}
+                  disabled={ocrBusy || !draftText.trim()}
+                >
+                  Agregar texto
+                </button>
+              </div>
 
               <p className="compose-label">Probar con un ejemplo</p>
               <div className="sample-chips">
@@ -310,12 +489,13 @@ export default function App() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => runAnalysis()}
-                  disabled={ocrBusy || !text.trim()}
+                  onClick={runAnalysis}
+                  disabled={ocrBusy || !canAnalyze}
                 >
                   Buscar indicios
+                  {fragmentCount > 1 ? ` (${fragmentCount} fragmentos)` : ''}
                 </button>
-                <button type="button" className="btn btn-text" onClick={clearAll}>
+                <button type="button" className="btn btn-text" onClick={clearAll} disabled={ocrBusy}>
                   Limpiar
                 </button>
               </div>
@@ -332,7 +512,10 @@ export default function App() {
                     exit={{ opacity: 0 }}
                   >
                     <p className="result-empty-title">Acá aparece el resultado</p>
-                    <p>Nivel de riesgo, señales detectadas y qué hacer en el momento.</p>
+                    <p>
+                      Cargá varias capturas o textos y después tocá “Buscar indicios”. Vas a ver el
+                      nivel de riesgo, las señales y qué hacer.
+                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -440,8 +623,7 @@ export default function App() {
           </div>
 
           <p className="install-note">
-            Después: sacá captura del chat sospechoso o usá “Compartir” hacia Señal Segura
-            (Android).
+            Después: sacá varias capturas del chat sospechoso y cargalas juntas desde la galería.
           </p>
 
           {canInstall && (
