@@ -63,7 +63,6 @@ const RULES: PatternRule[] = [
     severity: 3,
     patterns: [
       /mand[aá]s?(me)?\s+(una\s+)?(foto|fotito|fotitos|video|videito)/i,
-      /(una\s+)?fotitos?\b/i,
       /foto\s+(tuya|sin\s+ropa|desnud|en\s+ropa\s+interior|en\s+bombacha|en\s+calzon)/i,
       /mostr[aá]s?(me)?\s+(el\s+)?cuerpo/i,
       /sacate\s+(una\s+)?foto/i,
@@ -201,16 +200,91 @@ const CATEGORY_WEIGHT: Record<SignalCategory, number> = {
   identidad_sospechosa: 2,
 }
 
+/** Marcas típicas de la propia app / material educativo (no un chat). */
+const APP_UI_MARKERS: RegExp[] = [
+  /se[nñ]al\s+segura/i,
+  /aprender\s+las\s+se[nñ]ales/i,
+  /analiz[aá]\s+chats?\s+y\s+capturas/i,
+  /elegir\s+de\s+la\s+galer[ií]a/i,
+  /usar\s+c[aá]mara/i,
+  /buscar\s+indicios/i,
+  /instalar\s+(app|se[nñ]al)/i,
+  /pedir\s+ayuda\s+ahora/i,
+  /juego\s+online/i,
+  /red\s+social/i,
+  /\bchantaje\b/i,
+  /nivel\s+de\s+riesgo/i,
+  /este\s+resultado\s+identifica\s+se[nñ]ales/i,
+  /l[ií]nea\s+137/i,
+  /en\s+tu\s+dispositivo/i,
+  /fragmentos?\s+cargados/i,
+  /probar\s+con\s+un\s+ejemplo/i,
+  /contenido\s+breve,?\s+seg[uú]n\s+qui[eé]n/i,
+  /vos\s+eleg[ií]s\s+qu[eé]\s+revisar/i,
+]
+
+const EDUCATIONAL_CONTEXT =
+  /se[nñ]al(es)?\s+de\s+alerta|si\s+alguien|por\s+ejemplo|aprend|prevenci[oó]n|indicad|suele\s+(pedir|usar)|t[aá]ctica|herramienta\s+digital|no\s+diagnostica|orienta\s+para|identifica\s+se[nñ]ales|adulto\s+de\s+confianza|material\s+educativ/i
+
 function uniqueMatches(text: string, patterns: RegExp[]): string[] {
   const found = new Set<string>()
   for (const pattern of patterns) {
-    const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`)
+    const global = new RegExp(
+      pattern.source,
+      pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`,
+    )
     for (const match of text.matchAll(global)) {
       const snippet = match[0]?.trim()
-      if (snippet) found.add(snippet.slice(0, 80))
+      if (!snippet) continue
+      const index = match.index ?? 0
+      const window = text.slice(Math.max(0, index - 90), index + snippet.length + 90)
+      // Evita disparar por frases de las lecciones / tips de la propia app
+      if (EDUCATIONAL_CONTEXT.test(window)) continue
+      found.add(snippet.slice(0, 80))
     }
   }
   return [...found]
+}
+
+function countAppUiMarkers(text: string): number {
+  return APP_UI_MARKERS.filter((marker) => marker.test(text)).length
+}
+
+function looksLikeAppOrEducationalPage(text: string): boolean {
+  const markers = countAppUiMarkers(text)
+  if (markers >= 3) return true
+  if (markers >= 2 && /se[nñ]al\s+segura/i.test(text)) return true
+  return false
+}
+
+function stripAppUiNoise(text: string): string {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false
+      if (/^\[fragmento/i.test(line)) return true
+      if (/se[nñ]al\s+segura/i.test(line)) return false
+      const hits = APP_UI_MARKERS.filter((marker) => marker.test(line)).length
+      return hits === 0
+    })
+    .join('\n')
+    .trim()
+}
+
+function looksLikeConversation(text: string): boolean {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !/^\[fragmento/i.test(line))
+
+  const shortDialogue = lines.filter((line) => line.length > 0 && line.length <= 140).length
+  const chatHints =
+    /\b(hola|ok+|dale|jaj+|basura|buenas|q\s*tal|qué\s*tal|nn+|bb+)\b/i.test(text) ||
+    /\d{1,2}:\d{2}/.test(text) ||
+    /(whats?app|wsp|telegram|discord)/i.test(text)
+
+  return shortDialogue >= 4 || (shortDialogue >= 2 && chatHints)
 }
 
 function levelFromScore(score: number, hasCritical: boolean): RiskLevel {
@@ -273,8 +347,8 @@ function buildNextSteps(level: RiskLevel): string[] {
 }
 
 export function analyzeConversation(raw: string): AnalysisResult {
-  const text = raw.trim()
-  if (!text) {
+  const original = raw.trim()
+  if (!original) {
     return {
       level: 'bajo',
       score: 0,
@@ -282,6 +356,28 @@ export function analyzeConversation(raw: string): AnalysisResult {
       summary: 'Pegá una conversación para analizar posibles indicios.',
       nextSteps: ['Copiá el chat (sin datos sensibles de más) y volvé a analizar.'],
     }
+  }
+
+  let text = original
+
+  // Si la captura incluye la web/app, quitamos ese ruido y analizamos lo que reste
+  if (looksLikeAppOrEducationalPage(original)) {
+    const cleaned = stripAppUiNoise(original)
+    if (!cleaned || !looksLikeConversation(cleaned)) {
+      return {
+        level: 'bajo',
+        score: 0,
+        signals: [],
+        summary:
+          'Esto parece contenido de Señal Segura o material educativo, no un chat real. Por eso no marcamos riesgo. Cargá capturas de WhatsApp, un juego u otra conversación.',
+        nextSteps: [
+          'En el chat sospechoso, sacá capturas de pantalla.',
+          'Volvé a Señal Segura y cargalas desde la galería.',
+          'Si preferís, pegá los mensajes como texto y analizá.',
+        ],
+      }
+    }
+    text = cleaned
   }
 
   const signals: DetectedSignal[] = []
@@ -302,27 +398,38 @@ export function analyzeConversation(raw: string): AnalysisResult {
 
   signals.sort((a, b) => b.severity - a.severity)
 
-  const score = signals.reduce(
+  let score = signals.reduce(
     (sum, signal) => sum + signal.severity * CATEGORY_WEIGHT[signal.category],
     0,
   )
 
-  const hasCritical = signals.some(
-    (s) =>
-      s.severity === 3 &&
-      (s.category === 'solicitud_imagenes' ||
-        s.category === 'contenido_sexual' ||
-        s.category === 'manipulacion' ||
-        s.category === 'secretismo'),
-  )
+  const conversational = looksLikeConversation(text)
+
+  // Si no parece un diálogo (p. ej. un párrafo informativo), bajamos la severidad
+  if (signals.length > 0 && !conversational) {
+    score = Math.min(score, 2)
+  }
+
+  const hasCritical =
+    conversational &&
+    score >= 6 &&
+    signals.some(
+      (s) =>
+        s.severity === 3 &&
+        (s.category === 'solicitud_imagenes' ||
+          s.category === 'contenido_sexual' ||
+          s.category === 'manipulacion' ||
+          s.category === 'secretismo'),
+    )
 
   const level = levelFromScore(score, hasCritical)
+  const visibleSignals = !conversational && level === 'bajo' ? [] : signals
 
   return {
     level,
     score,
-    signals,
-    summary: buildSummary(level, signals),
+    signals: visibleSignals,
+    summary: buildSummary(level, visibleSignals),
     nextSteps: buildNextSteps(level),
   }
 }
