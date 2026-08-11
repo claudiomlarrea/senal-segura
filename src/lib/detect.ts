@@ -108,9 +108,14 @@ const RULES: PatternRule[] = [
     severity: 2,
     patterns: [
       /te\s+(compro|regalo|dono|doy)\s+/i,
-      /(plata|dinero|gift\s*card|skin|robux|v-?bucks|recarga)/i,
+      /te\s+(doy|regalo|dono|mando|paso|envio|env[ií]o)\s+(plata|dinero)/i,
+      /(te\s+)?(regalo|dono)\s+(plata|dinero|una?\s+gift)/i,
       /si\s+hac[eé]s\s+esto\s+te\s+(doy|regalo)/i,
-      /pago\s+(yo|todo)/i,
+      /te\s+pago\s+(si|para|por)/i,
+      /pago\s+(yo|todo)\s+(si|para|por)/i,
+      // Monedas / ítems típicos de grooming en juegos (sí son señal)
+      /\b(gift\s*cards?|robux|v-?bucks|skins?)\b/i,
+      /te\s+(recargo|recarga)\s+(el\s+)?(cel|celular|juego|free\s*fire|fortnite)/i,
     ],
   },
   {
@@ -229,6 +234,10 @@ const APP_UI_MARKERS: RegExp[] = [
 const EDUCATIONAL_CONTEXT =
   /se[nñ]al(es)?\s+de\s+alerta|si\s+alguien|por\s+ejemplo|aprend|prevenci[oó]n|indicad|suele\s+(pedir|usar)|t[aá]ctica|herramienta\s+digital|no\s+diagnostica|orienta\s+para|identifica\s+se[nñ]ales|adulto\s+de\s+confianza|material\s+educativ/i
 
+/** Contexto financiero / laboral adulto: no confundir con oferta de plata a un menor. */
+const FINANCIAL_OR_PROFESSIONAL_CONTEXT =
+  /invertir|inversi[oó]n|inversiones|cedears?|bonos|acciones|obligaciones\s+negociables|futuros|banco\s+tradicional|cuenta\s+(no\s+tiene|de\s+inversi|corriente)|wealth\s*management|financial\s+advisor|asesor\s+financier|rendir|rendimiento|mantenimiento\s+ni\s+de\s+apertura|balanz|broker|mercado|d[oó]lares|profesionales\s+a\s+invertir|sin\s+compromiso|coordinamos\s+una\s+charla/i
+
 function uniqueMatches(text: string, patterns: RegExp[]): string[] {
   const found = new Set<string>()
   for (const pattern of patterns) {
@@ -243,6 +252,11 @@ function uniqueMatches(text: string, patterns: RegExp[]): string[] {
       const window = text.slice(Math.max(0, index - 90), index + snippet.length + 90)
       // Evita disparar por frases de las lecciones / tips de la propia app
       if (EDUCATIONAL_CONTEXT.test(window)) continue
+      // Evita disparar por charlas de inversiones / trabajo adulto
+      if (FINANCIAL_OR_PROFESSIONAL_CONTEXT.test(window)) continue
+      // Ventana más amplia por si el OCR cortó mal el mensaje
+      const wide = text.slice(Math.max(0, index - 220), index + snippet.length + 220)
+      if (FINANCIAL_OR_PROFESSIONAL_CONTEXT.test(wide)) continue
       found.add(snippet.slice(0, 80))
     }
   }
