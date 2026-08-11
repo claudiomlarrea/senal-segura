@@ -62,8 +62,10 @@ const RULES: PatternRule[] = [
       'Pedir fotos del cuerpo, en ropa interior o de contenido íntimo es una señal grave de riesgo.',
     severity: 3,
     patterns: [
-      /mand[aá]s?(me)?\s+(una\s+)?(foto|fotito|fotitos|video|videito)/i,
-      /foto\s+(tuya|sin\s+ropa|desnud|en\s+ropa\s+interior|en\s+bombacha|en\s+calzon)/i,
+      /mand[aá]s?(me)?\s+(una?\s+|unas?\s+)?(foto|fotos|fotito|fotitos|video|videos|videito)/i,
+      /pas[aá](me|nos)?\s+(una?\s+|unas?\s+)?(foto|fotos|fotito|fotitos|video|videos)/i,
+      /envi[aá](me)?\s+(una?\s+|unas?\s+)?(foto|fotos|video|videos)/i,
+      /fotos?\s+(tuyas?|tuyos?|tuy[oa]|sin\s+ropa|desnud|en\s+ropa\s+interior|en\s+bombacha|en\s+calzon)/i,
       /mostr[aá]s?(me)?\s+(el\s+)?cuerpo/i,
       /sacate\s+(una\s+)?foto/i,
       /nudes?/i,
@@ -148,11 +150,12 @@ const RULES: PatternRule[] = [
       'Preguntar dónde vivís, a qué escuela vas o cuándo estás solo puede preparar un contacto riesgoso.',
     severity: 2,
     patterns: [
-      /d[oó]nde\s+(viv[ií]s|qued[aá]s|est[aá]s)/i,
+      /d[oó]nde\s+(viv[eií]s|qued[aá]s|est[aá]s|and[aá]s)/i,
+      /decime\s+d[oó]nde\s+(viv[eií]s|qued[aá]s|est[aá]s)/i,
       /(a\s+qu[eé]|qu[eé])\s+(colegio|escuela|escuelita)\s+(vas|andas)/i,
       /est[aá]s\s+solo\/?a?/i,
       /a\s+qu[eé]\s+hora\s+(salen|vuelven)\s+(tus?\s+)?(pap[aá]s?|padres)/i,
-      /mandame\s+(tu\s+)?(direcci[oó]n|ubicaci[oó]n|ubicacion)/i,
+      /(mand[aá]|pas[aá])(me)?\s+(tu\s+)?(direcci[oó]n|ubicaci[oó]n|ubicacion)/i,
     ],
   },
   {
@@ -280,10 +283,14 @@ function looksLikeConversation(text: string): boolean {
 
   const shortDialogue = lines.filter((line) => line.length > 0 && line.length <= 140).length
   const chatHints =
-    /\b(hola|ok+|dale|jaj+|basura|buenas|q\s*tal|qué\s*tal|nn+|bb+)\b/i.test(text) ||
+    /\b(hola|ok+|dale|jaj+|basura|buenas|q\s*tal|qué\s*tal|nn+|bb+|decime|pasame|mandame)\b/i.test(
+      text,
+    ) ||
     /\d{1,2}:\d{2}/.test(text) ||
     /(whats?app|wsp|telegram|discord)/i.test(text)
 
+  // Una sola línea corta con tono de chat (p. ej. mensaje pegado) también cuenta
+  if (shortDialogue >= 1 && chatHints && text.length <= 280) return true
   return shortDialogue >= 4 || (shortDialogue >= 2 && chatHints)
 }
 
